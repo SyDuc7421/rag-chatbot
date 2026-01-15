@@ -1,0 +1,38 @@
+# --- Binaries & Executables ---
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+out/
+
+# --- Test Coverage ---
+*.out
+*.test
+*.prof
+
+# --- Go Modules & Dependencies ---
+# vendor/
+
+# --- IDEs & Editors ---
+# JetBrains (GoLand, IntelliJ)
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Vim
+*~
+*.swp
+*.swo
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- Environment Variables ---
+.env
+.env.local
+.env.*.local
