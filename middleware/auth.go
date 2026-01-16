@@ -2,7 +2,11 @@ package middleware
 
 import (
 	"RAG/config"
+	"RAG/models"
+	"RAG/pgk/database"
 	"RAG/pgk/utils"
+	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -37,15 +41,32 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			userID := claims["id"].(string)
-			ID, _ := uuid.Parse(userID)
-			c.Set("UserID", ID)
-			c.Next()
-		} else {
+		// If user is not available or redis cached not found return invalid token
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid token")
 			c.Abort()
-
+			return
 		}
+		userID := claims["id"].(string)
+		ID, _ := uuid.Parse(userID)
+
+		var user models.User
+		if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			c.Abort()
+			return
+		}
+
+		redisKey := fmt.Sprintf("rt:%s", userID)
+		_, err = database.RedisClient.Get(context.Background(), redisKey).Result()
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			c.Abort()
+			return
+		}
+
+		c.Set("UserID", ID)
+		c.Next()
 	}
 }

@@ -54,7 +54,7 @@ func GetAllConversations(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	if err := database.DB.Where("user_id = ?", UserID).Find(&conversations).Error; err != nil {
+	if err := database.DB.Where("user_id = ?", UserID).Order("created_at ASC").Find(&conversations).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -70,15 +70,9 @@ func GetConversationByID(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid Conversation ID")
 		return
 	}
-
-	UserID, ok := c.MustGet("UserID").(uuid.UUID)
-	if !ok {
-		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
+	// Get By ID: We don't need match UserID because can share conversation, message
 	var conversation models.Conversation
-	if err := database.DB.Where("id = ? AND user_id = ?", ConversationID, UserID).First(&conversation).Error; err != nil {
+	if err := database.DB.Where("id = ?", ConversationID).First(&conversation).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}

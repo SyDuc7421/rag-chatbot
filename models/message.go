@@ -10,7 +10,7 @@ import (
 type Message struct {
 	ID uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	// 0: Bot 1: User
-	Sender         bool           `gorm:"default:true" json:"sender"`
+	Sender         *bool          `gorm:"not null" json:"sender"`
 	ConversationID uuid.UUID      `gorm:"type:char(36);index;not null" json:"conversation_id"`
 	Content        string         `gorm:"type:text;not null" json:"content"`
 	TokenCount     int            `gorm:"default:0" json:"token_count"`

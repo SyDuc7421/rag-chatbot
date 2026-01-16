@@ -2,26 +2,43 @@ package ai
 
 import (
 	"RAG/config"
+	"RAG/models"
 	"context"
 
 	"github.com/sashabaranov/go-openai"
 )
 
-func GetResponse(message string) (string, error) {
+func GetResponse(messages []models.Message, newMessage string) (string, int, error) {
 	cfg := config.GetConfig()
 	client := openai.NewClient(cfg.OPENAIAPIKey)
 
 	var apiMessages []openai.ChatCompletionMessage
 
 	apiMessages = append(apiMessages, openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleSystem,
-		Content: "Bạn là 1 chatbox rag thông tin. Hảy trả lời ngắn gọn, chích xác và hữu ích",
+		Role: openai.ChatMessageRoleSystem,
+		Content: "Answer the user's question using only the provided context." +
+			"If the context is insufficient, say you do not know." +
+			"Do not make up information." +
+			"Be concise, accurate, and professional." +
+			"Do not reference the context or internal systems.",
 	})
 
 	//	Loop in input is a list message
+	for _, message := range messages {
+		Role := openai.ChatMessageRoleAssistant
+		if *message.Sender {
+			Role = openai.ChatMessageRoleUser
+		}
+
+		apiMessages = append(apiMessages, openai.ChatCompletionMessage{
+			Role:    Role,
+			Content: message.Content,
+		})
+	}
+
 	apiMessages = append(apiMessages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
-		Content: message,
+		Content: newMessage,
 	})
 
 	resp, err := client.CreateChatCompletion(
@@ -32,7 +49,7 @@ func GetResponse(message string) (string, error) {
 		},
 	)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return resp.Choices[0].Message.Content, nil
+	return resp.Choices[0].Message.Content, resp.Usage.TotalTokens, nil
 }
