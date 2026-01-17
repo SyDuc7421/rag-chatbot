@@ -42,6 +42,7 @@ func Migrate(db *gorm.DB) {
 		&models.User{},
 		&models.Conversation{},
 		&models.Message{},
+		&models.Document{},
 	)
 	if err != nil {
 		log.Fatal("AutoMigrate failed:", err)

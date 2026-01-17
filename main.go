@@ -4,6 +4,7 @@ import (
 	"RAG/config"
 	"RAG/internal/routers"
 	"RAG/pgk/database"
+	"RAG/pgk/storage"
 	"fmt"
 	"log"
 )
@@ -14,8 +15,8 @@ func main() {
 
 	database.ConnectMySQL(cfg)
 	database.ConnectRedis(cfg)
-
 	database.Migrate(database.DB)
+	storage.ConnectMinio()
 
 	r := routers.SetupRouter()
 

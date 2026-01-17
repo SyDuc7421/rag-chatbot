@@ -12,6 +12,7 @@ type Conversation struct {
 	Title     string         `gorm:"size:255;not null" json:"title"`
 	UserID    uuid.UUID      `gorm:"type:char(36);index;not null" json:"user_id"`
 	Messages  []Message      `gorm:"foreignKey:ConversationID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"messages,omitempty"`
+	Documents []Document     `gorm:"foreignKey:ConversationID;constraint:OnUpdate:CASCADE;" json:"documents,omitempty"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`

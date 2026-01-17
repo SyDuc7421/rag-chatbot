@@ -3,6 +3,7 @@ package routers
 import (
 	"RAG/internal/auth"
 	"RAG/internal/conversation"
+	"RAG/internal/document"
 	"RAG/internal/message"
 	"RAG/middleware"
 
@@ -27,6 +28,7 @@ func SetupRouter() *gin.Engine {
 	{
 		conversation.RegisterRoutes(protected)
 		message.RegisterRoutes(protected)
+		document.RegisterRoutes(protected)
 	}
 
 	return router
