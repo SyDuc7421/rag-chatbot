@@ -17,6 +17,7 @@ func main() {
 	database.ConnectRedis(cfg)
 	database.Migrate(database.DB)
 	storage.ConnectMinio()
+	storage.ConnectQdrant()
 
 	r := routers.SetupRouter()
 

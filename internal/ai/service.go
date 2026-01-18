@@ -44,7 +44,7 @@ func GetResponse(messages []models.Message, newMessage string) (string, int, err
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:    cfg.OPENAIMODEL,
+			Model:    cfg.OPENAIModel,
 			Messages: apiMessages,
 		},
 	)

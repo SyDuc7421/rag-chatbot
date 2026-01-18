@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -89,6 +90,38 @@ func GetPresignedURL(ctx context.Context, key string) (string, error) {
 		return "", errors.New("error when get presigned url: " + err.Error())
 	}
 	return presignedURL.String(), nil
+}
+
+func GetObjectBuffer(ctx context.Context, key string) ([]byte, int64, error) {
+	cfg := config.GetConfig()
+
+	info, err := storage.MinioClient.StatObject(
+		ctx,
+		cfg.Minio.BucketName,
+		key,
+		minio.StatObjectOptions{},
+	)
+	if err != nil {
+		return nil, 0, errors.New("error when stat object: " + err.Error())
+	}
+
+	object, err := storage.MinioClient.GetObject(ctx, cfg.Minio.BucketName, key, minio.GetObjectOptions{})
+
+	if err != nil {
+		return nil, 0, errors.New("error when get object: " + err.Error())
+	}
+	defer func(object *minio.Object) {
+		err := object.Close()
+		if err != nil {
+
+		}
+	}(object)
+
+	data, err := io.ReadAll(object)
+	if err != nil {
+		return nil, 0, errors.New("error when read object: " + err.Error())
+	}
+	return data, info.Size, nil
 }
 
 func GetAllDocuments(c *gin.Context) {
@@ -206,7 +239,10 @@ func DeleteDocument(c *gin.Context) {
 	}
 
 	var document models.Document
-	if err := database.DB.Where("id = ? AND conversation_id = ?", ID, ConversationID).First(&document).Error; err != nil {
+	if err := database.DB.
+		Where("id = ? AND conversation_id = ?", ID, ConversationID).
+		Where("conversation_id IN (?)", database.DB.Model(&models.Conversation{}).Select("id").Where("user_id = ?", UserID)).
+		First(&document).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Document not found")
 		return
 	}
@@ -235,4 +271,58 @@ func DeleteDocument(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, "Success", nil)
 
+}
+
+func IngestDocument(c *gin.Context) {
+	ConversationIDParam, _ := c.Params.Get("conversation_id")
+	ConversationID, err := uuid.Parse(ConversationIDParam)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Conversation ID not valid")
+		return
+	}
+
+	IDParam, _ := c.Params.Get("id")
+	ID, err := uuid.Parse(IDParam)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Conversation ID not valid")
+		return
+	}
+
+	UserID, ok := c.MustGet("UserID").(uuid.UUID)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized User")
+		return
+	}
+
+	var document models.Document
+	if err := database.DB.
+		Where("id = ? AND conversation_id = ?", ID, ConversationID).
+		Where("conversation_id IN (?)", database.DB.Model(&models.Conversation{}).Select("id").Where("user_id = ?", UserID)).
+		First(&document).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Document not found")
+		return
+	}
+	data, size, err := GetObjectBuffer(c, document.SourceUri)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Error when get object")
+		return
+	}
+
+	rawText, err := utils.ExtractTextFromBuffer(data, size)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Error when get extract text")
+		return
+	}
+
+	docs, err := utils.PrepareDocuments(rawText, document)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Error when prepare documents")
+		return
+	}
+
+	if err := utils.SaveToQdrant(c, docs); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Error when save documents to qdrant store")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Success", nil)
 }

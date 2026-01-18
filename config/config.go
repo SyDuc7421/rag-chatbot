@@ -34,16 +34,30 @@ type Minio struct {
 	BucketName string `env:"MINIO_BUCKET_NAME" required:"true"`
 }
 
+type Qdrant struct {
+	Host           string `env:"QDRANT_HOST" required:"true"`
+	GRPCPort       int    `env:"QDRANT_GRPC_PORT" required:"true"`
+	HTTPPort       int    `env:"QDRANT_HTTP_PORT" required:"true"`
+	CollectionName string `env:"QDRANT_COLLECTION_NAME" required:"true"`
+}
+
+type EmbeddingModel struct {
+	OpenAIEmbeddingModel string `env:"OPENAI_EMBEDDING_MODEL" required:"true"`
+	Dimension            int    `env:"EMBEDDING_DIMENSION" required:"true"`
+}
+
 type Config struct {
 	AppEnv           string `env:"APP_ENV" envDefault:"development"`
 	Port             string `env:"APP_PORT" envDefault:"8080"`
 	JWTAccessSecret  string `env:"JWT_ACCESS_SECRET" required:"true"`
 	JWTRefreshSecret string `env:"JWT_REFRESH_SECRET" required:"true"`
 	OPENAIAPIKey     string `env:"OPENAI_API_KEY" required:"true"`
-	OPENAIMODEL      string `env:"OPENAI_MODEL" required:"true"`
+	OPENAIModel      string `env:"OPENAI_MODEL" required:"true"`
 	MySQL            MySQL
 	Redis            Redis
 	Minio            Minio
+	Qdrant           Qdrant
+	EmbeddingModel   EmbeddingModel
 }
 
 var (

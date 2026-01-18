@@ -10,5 +10,6 @@ func RegisterRoutes(rg *gin.RouterGroup) {
 		document.GET("/:conversation_id/document/:id", GetDocumentByID)
 		document.GET("/:conversation_id/document/:id/url", GetDocumentPresignedURL)
 		document.DELETE("/:conversation_id/document/:id", DeleteDocument)
+		document.POST("/:conversation_id/document/:id/ingest", IngestDocument)
 	}
 }
