@@ -13,6 +13,7 @@ import (
 	"github.com/tmc/langchaingo/llms/openai"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/textsplitter"
+	"github.com/tmc/langchaingo/vectorstores"
 	"github.com/tmc/langchaingo/vectorstores/qdrant"
 )
 
@@ -96,4 +97,50 @@ func SaveToQdrant(ctx context.Context, docs []schema.Document) error {
 	}
 
 	return nil
+}
+
+func SearchInQdrant(ctx context.Context, userQuery string, convID string) ([]schema.Document, error) {
+	cfg := config.GetConfig()
+
+	llm, err := openai.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to init llm: %w", err)
+	}
+	embedder, err := embeddings.NewEmbedder(llm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init embedder: %w", err)
+	}
+	rawAddr := fmt.Sprintf("http://%s:%d", cfg.Qdrant.Host, cfg.Qdrant.HTTPPort)
+
+	parsedURL, err := url.Parse(rawAddr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid qdrant address: %w", err)
+	}
+	store, err := qdrant.New(
+		qdrant.WithURL(*parsedURL),
+		qdrant.WithCollectionName(cfg.Qdrant.CollectionName),
+		qdrant.WithEmbedder(embedder),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to init qdrant store: %w", err)
+	}
+
+	docs, err := store.SimilaritySearch(ctx, userQuery, 10,
+		vectorstores.WithFilters(map[string]any{
+			"must": []map[string]any{
+				{
+					"key": "conversation_id",
+					"match": map[string]any{
+						"value": convID,
+					},
+				},
+			},
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search in qdrant: %w", err)
+	}
+
+	return docs, nil
 }

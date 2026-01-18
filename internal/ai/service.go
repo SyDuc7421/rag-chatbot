@@ -6,9 +6,10 @@ import (
 	"context"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/tmc/langchaingo/schema"
 )
 
-func GetResponse(messages []models.Message, newMessage string) (string, int, error) {
+func GetResponse(messages []models.Message, docs []schema.Document, newMessage string) (string, int, error) {
 	cfg := config.GetConfig()
 	client := openai.NewClient(cfg.OPENAIAPIKey)
 
@@ -33,6 +34,13 @@ func GetResponse(messages []models.Message, newMessage string) (string, int, err
 		apiMessages = append(apiMessages, openai.ChatCompletionMessage{
 			Role:    Role,
 			Content: message.Content,
+		})
+	}
+	// Loop in docs
+	for _, doc := range docs {
+		apiMessages = append(apiMessages, openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: "Use the following context to answer. If the answer is not in the context, say you don't know.\\n\\n" + doc.PageContent,
 		})
 	}
 

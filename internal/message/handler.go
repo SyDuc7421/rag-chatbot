@@ -43,6 +43,12 @@ func HandleResponseMessage(c *gin.Context) {
 		return
 	}
 
+	docs, err := utils.SearchInQdrant(c, input.Message, conv.ID.String())
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to search in qdrant")
+		return
+	}
+
 	var messages []models.Message
 	if err := database.DB.Where("conversation_id = ?", conv.ID).Order("created_at DESC").Limit(10).Find(&messages).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Conversation message not found")
@@ -50,7 +56,7 @@ func HandleResponseMessage(c *gin.Context) {
 	}
 	// Reverse messages because get in DESC
 	slices.Reverse(messages)
-	response, totalToken, err := ai.GetResponse(messages, input.Message)
+	response, totalToken, err := ai.GetResponse(messages, docs, input.Message)
 
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Error while getting response")
@@ -75,7 +81,9 @@ func HandleResponseMessage(c *gin.Context) {
 	}); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Error while creating message")
 	}
-	utils.SuccessResponse(c, http.StatusOK, "Success", gin.H{"response": response})
+	utils.SuccessResponse(c, http.StatusOK, "Success", gin.H{
+		"response": response,
+	})
 }
 
 func HandleGetAllMessages(c *gin.Context) {
