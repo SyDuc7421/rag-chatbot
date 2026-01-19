@@ -13,6 +13,8 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,8 +22,13 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func UploadDocument(c *gin.Context) {
+const MaxUploadSize = 10 << 20 // 10 MB
+var allowExtension = map[string]bool{
+	".pdf":  true,
+	".docx": true,
+}
 
+func UploadDocument(c *gin.Context) {
 	ConversationIDParam, _ := c.Params.Get("conversation_id")
 	ConversationID, err := uuid.Parse(ConversationIDParam)
 	if err != nil {
@@ -29,9 +36,29 @@ func UploadDocument(c *gin.Context) {
 		return
 	}
 
+	c.Request.Body = http.MaxBytesReader(
+		c.Writer,
+		c.Request.Body,
+		MaxUploadSize,
+	)
+	if err := c.Request.ParseMultipartForm(MaxUploadSize); err != nil {
+		if err.Error() == "http: request body too large" {
+			utils.ErrorResponse(c, http.StatusRequestEntityTooLarge, "Upload too large, maximum 10MB")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusBadRequest, "Upload file not valid")
+		return
+	}
+
 	file, err := c.FormFile("document")
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "File not found")
+		return
+	}
+
+	extFile := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowExtension[extFile] {
+		utils.ErrorResponse(c, http.StatusBadRequest, "File extension not allowed")
 		return
 	}
 	src, err := file.Open()

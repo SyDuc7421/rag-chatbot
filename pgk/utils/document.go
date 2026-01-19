@@ -26,7 +26,7 @@ func ExtractTextFromBuffer(data []byte, size int64) (string, error) {
 
 	var content bytes.Buffer
 	numPages := f.NumPage()
-	for pageIndex := 1; pageIndex < numPages; pageIndex++ {
+	for pageIndex := 1; pageIndex <= numPages; pageIndex++ {
 		p := f.Page(pageIndex)
 		if p.V.IsNull() {
 			continue
@@ -126,7 +126,7 @@ func SearchInQdrant(ctx context.Context, userQuery string, convID string) ([]sch
 		return nil, fmt.Errorf("failed to init qdrant store: %w", err)
 	}
 
-	docs, err := store.SimilaritySearch(ctx, userQuery, 10,
+	docs, err := store.SimilaritySearch(ctx, userQuery, 5,
 		vectorstores.WithFilters(map[string]any{
 			"must": []map[string]any{
 				{
